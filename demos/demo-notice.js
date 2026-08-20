@@ -1,6 +1,6 @@
 (() => {
-  if (sessionStorage.getItem('hacheDemoNoticeSeen') === '1') return;
-  sessionStorage.setItem('hacheDemoNoticeSeen', '1');
+  if (localStorage.getItem('hacheDemoNoticeSeen') === '1') return;
+  localStorage.setItem('hacheDemoNoticeSeen', '1');
 
   const style = document.createElement('style');
   style.textContent = `
