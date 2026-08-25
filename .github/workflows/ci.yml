@@ -1,0 +1,28 @@
+name: Hache Interactive CI
+
+on:
+  push:
+    branches: [main, hache-base-foundation]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Git whitespace check
+        run: git diff --check HEAD^ -- .
+
+      - name: JavaScript syntax
+        run: |
+          node --check js/main.js
+          node --check demos/demo-notice.js
+          node --check seo/tests/seo-static.mjs
+
+      - name: Hache-Base SEO baseline
+        run: node seo/tests/seo-static.mjs .
