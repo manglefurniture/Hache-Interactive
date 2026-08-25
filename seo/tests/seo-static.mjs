@@ -55,19 +55,24 @@ function checkHtml(file) {
   const robotsContent = attr(robotsTag, 'content') || '';
   const hasNoindex = /(?:^|[,\s])noindex(?:[,\s]|$)/i.test(robotsContent);
 
-  if (demo && !hasNoindex) {
-    fail('SEO-DEMO-001', `${rel}: demo pages must use noindex,follow`);
-  }
-  if (!demo && path.basename(rel).toLowerCase() === 'index.html' && hasNoindex) {
+  if (demo) {
+    if (!/<script\b[^>]*src\s*=\s*(["'])\.\.\/demo-notice\.js\1[^>]*><\/script>/i.test(html)) {
+      fail('SEO-DEMO-001', `${rel}: demo must load ../demo-notice.js so noindex policy is enforced`);
+    }
+  } else if (path.basename(rel).toLowerCase() === 'index.html' && hasNoindex) {
     fail('SEO-INDEX-001', `${rel}: primary public page must remain indexable`);
   }
 
   const canonicals = [...html.matchAll(/<link\b[^>]*rel\s*=\s*(["'])canonical\1[^>]*>/gi)];
-  if (canonicals.length !== 1) {
-    fail('SEO-INDEX-002', `${rel}: expected exactly one canonical, found ${canonicals.length}`);
-  } else {
-    const href = attr(canonicals[0][0], 'href');
-    if (!href || !/^https:\/\//i.test(href)) fail('SEO-INDEX-002', `${rel}: canonical must be absolute HTTPS`);
+  if (!demo) {
+    if (canonicals.length !== 1) {
+      fail('SEO-INDEX-002', `${rel}: expected exactly one canonical, found ${canonicals.length}`);
+    } else {
+      const href = attr(canonicals[0][0], 'href');
+      if (!href || !/^https:\/\//i.test(href)) fail('SEO-INDEX-002', `${rel}: canonical must be absolute HTTPS`);
+    }
+  } else if (canonicals.length > 1) {
+    fail('SEO-INDEX-003', `${rel}: demo has multiple canonicals`);
   }
 
   if (!/<h1\b[^>]*>[\s\S]*?<\/h1>/i.test(html)) {
@@ -93,6 +98,18 @@ function checkHtml(file) {
     } catch {
       fail('SEO-SCHEMA-001', `${rel}: invalid JSON-LD`);
     }
+  }
+}
+
+function checkDemoPolicy() {
+  const file = path.join(target, 'demos', 'demo-notice.js');
+  if (!fs.existsSync(file)) {
+    fail('SEO-DEMO-002', 'demos/demo-notice.js missing');
+    return;
+  }
+  const js = fs.readFileSync(file, 'utf8');
+  if (!/robots\.content\s*=\s*['"]noindex,follow['"]/i.test(js)) {
+    fail('SEO-DEMO-002', 'demo notice must enforce robots noindex,follow');
   }
 }
 
@@ -133,6 +150,7 @@ if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
 }
 
 for (const file of walk(target).filter((f) => /\.html?$/i.test(f))) checkHtml(file);
+checkDemoPolicy();
 checkRobots();
 checkSitemap();
 
