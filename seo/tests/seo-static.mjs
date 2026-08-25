@@ -54,10 +54,14 @@ function checkHtml(file) {
   const robotsTag = html.match(/<meta\b[^>]*name\s*=\s*(["'])robots\1[^>]*>/i)?.[0] || '';
   const robotsContent = attr(robotsTag, 'content') || '';
   const hasNoindex = /(?:^|[,\s])noindex(?:[,\s]|$)/i.test(robotsContent);
+  const hasFollow = /(?:^|[,\s])follow(?:[,\s]|$)/i.test(robotsContent);
 
   if (demo) {
+    if (!hasNoindex || !hasFollow) {
+      fail('SEO-DEMO-001', `${rel}: demo must deliver static robots noindex,follow in HTML`);
+    }
     if (!/<script\b[^>]*src\s*=\s*(["'])\.\.\/demo-notice\.js\1[^>]*><\/script>/i.test(html)) {
-      fail('SEO-DEMO-001', `${rel}: demo must load ../demo-notice.js so noindex policy is enforced`);
+      fail('SEO-DEMO-002', `${rel}: demo must load ../demo-notice.js for the conceptual-project notice`);
     }
   } else if (path.basename(rel).toLowerCase() === 'index.html' && hasNoindex) {
     fail('SEO-INDEX-001', `${rel}: primary public page must remain indexable`);
@@ -80,10 +84,7 @@ function checkHtml(file) {
   }
 
   for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
-    if (attr(match[0], 'alt') === null) {
-      if (demo) warn('SEO-A11Y-001', `${rel}: demo image missing alt attribute`);
-      else fail('SEO-A11Y-001', `${rel}: image missing alt attribute`);
-    }
+    if (attr(match[0], 'alt') === null) fail('SEO-A11Y-001', `${rel}: image missing alt attribute`);
   }
 
   if (!demo) {
@@ -104,16 +105,9 @@ function checkHtml(file) {
   }
 }
 
-function checkDemoPolicy() {
+function checkDemoNotice() {
   const file = path.join(target, 'demos', 'demo-notice.js');
-  if (!fs.existsSync(file)) {
-    fail('SEO-DEMO-002', 'demos/demo-notice.js missing');
-    return;
-  }
-  const js = fs.readFileSync(file, 'utf8');
-  if (!/robots\.content\s*=\s*['"]noindex,follow['"]/i.test(js)) {
-    fail('SEO-DEMO-002', 'demo notice must enforce robots noindex,follow');
-  }
+  if (!fs.existsSync(file)) fail('SEO-DEMO-003', 'demos/demo-notice.js missing');
 }
 
 function checkRobots() {
@@ -153,7 +147,7 @@ if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) {
 }
 
 for (const file of walk(target).filter((f) => /\.html?$/i.test(f))) checkHtml(file);
-checkDemoPolicy();
+checkDemoNotice();
 checkRobots();
 checkSitemap();
 
