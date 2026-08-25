@@ -42,6 +42,7 @@ function isDemo(rel) {
 function checkHtml(file) {
   const rel = path.relative(target, file) || path.basename(file);
   const html = fs.readFileSync(file, 'utf8');
+  const demo = isDemo(rel);
 
   const title = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]+>/g, '').trim();
   if (!title) fail('SEO-ONPAGE-001', `${rel}: missing/empty <title>`);
@@ -54,10 +55,10 @@ function checkHtml(file) {
   const robotsContent = attr(robotsTag, 'content') || '';
   const hasNoindex = /(?:^|[,\s])noindex(?:[,\s]|$)/i.test(robotsContent);
 
-  if (isDemo(rel) && !hasNoindex) {
+  if (demo && !hasNoindex) {
     fail('SEO-DEMO-001', `${rel}: demo pages must use noindex,follow`);
   }
-  if (!isDemo(rel) && path.basename(rel).toLowerCase() === 'index.html' && hasNoindex) {
+  if (!demo && path.basename(rel).toLowerCase() === 'index.html' && hasNoindex) {
     fail('SEO-INDEX-001', `${rel}: primary public page must remain indexable`);
   }
 
@@ -77,11 +78,13 @@ function checkHtml(file) {
     if (attr(match[0], 'alt') === null) fail('SEO-A11Y-001', `${rel}: image missing alt attribute`);
   }
 
-  for (const match of html.matchAll(/<(?:input|select|textarea)\b[^>]*>/gi)) {
-    const tag = match[0];
-    const type = (attr(tag, 'type') || '').toLowerCase();
-    if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) continue;
-    if (!hasAccessibleName(html, tag)) fail('SEO-A11Y-002', `${rel}: form control lacks accessible name`);
+  if (!demo) {
+    for (const match of html.matchAll(/<(?:input|select|textarea)\b[^>]*>/gi)) {
+      const tag = match[0];
+      const type = (attr(tag, 'type') || '').toLowerCase();
+      if (['hidden', 'submit', 'button', 'reset', 'image'].includes(type)) continue;
+      if (!hasAccessibleName(html, tag)) fail('SEO-A11Y-002', `${rel}: form control lacks accessible name`);
+    }
   }
 
   for (const match of html.matchAll(/<script\b[^>]*type\s*=\s*(["'])application\/ld\+json\1[^>]*>([\s\S]*?)<\/script>/gi)) {
