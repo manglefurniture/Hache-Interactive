@@ -1,12 +1,4 @@
 (() => {
-  let robots = document.head.querySelector('meta[name="robots"]');
-  if (!robots) {
-    robots = document.createElement('meta');
-    robots.name = 'robots';
-    document.head.appendChild(robots);
-  }
-  robots.content = 'noindex,follow';
-
   const style = document.createElement('style');
   style.textContent = `
     .hache-demo-notice{position:fixed;z-index:2147483647;left:50%;top:24px;transform:translate(-50%,-18px);width:min(calc(100vw - 28px),720px);padding:24px 58px 24px 26px;border:1px solid rgba(255,255,255,.22);border-radius:22px;background:rgba(8,10,9,.88);backdrop-filter:blur(22px);-webkit-backdrop-filter:blur(22px);box-shadow:0 28px 90px rgba(0,0,0,.5);color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;opacity:0;transition:opacity .35s ease,transform .35s ease;pointer-events:auto}
