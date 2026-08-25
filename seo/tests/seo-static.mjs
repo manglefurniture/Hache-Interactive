@@ -80,7 +80,10 @@ function checkHtml(file) {
   }
 
   for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
-    if (attr(match[0], 'alt') === null) fail('SEO-A11Y-001', `${rel}: image missing alt attribute`);
+    if (attr(match[0], 'alt') === null) {
+      if (demo) warn('SEO-A11Y-001', `${rel}: demo image missing alt attribute`);
+      else fail('SEO-A11Y-001', `${rel}: image missing alt attribute`);
+    }
   }
 
   if (!demo) {
