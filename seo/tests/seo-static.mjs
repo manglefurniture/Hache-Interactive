@@ -147,7 +147,7 @@ function rendersDemoNotice(script) {
       document,
       requestAnimationFrame(callback) { callback(); },
       setTimeout() { return 0; },
-    }, { filename: 'demos/demo-notice.js', timeout: 1000 });
+    }, { filename: 'demos/demo-notice.js', microtaskMode: 'afterEvaluate', timeout: 1000 });
   } catch {
     return false;
   }
@@ -180,6 +180,11 @@ function checkDemoNotice() {
   const removedNoticeScript = "const notice=document.createElement('div');notice.className='hache-demo-notice';notice.innerHTML='Este sitio es una demostración.';document.body.appendChild(notice);notice.remove();";
   if (rendersDemoNotice(removedNoticeScript)) {
     fail('SEO-DEMO-006', 'a demo notice removed before render must not pass');
+  }
+
+  const microtaskRemovedNoticeScript = "const notice=document.createElement('div');notice.className='hache-demo-notice';notice.innerHTML='Este sitio es una demostración.';document.body.appendChild(notice);Promise.resolve().then(() => notice.remove());";
+  if (rendersDemoNotice(microtaskRemovedNoticeScript)) {
+    fail('SEO-DEMO-007', 'a demo notice removed in a microtask must not pass');
   }
 }
 
