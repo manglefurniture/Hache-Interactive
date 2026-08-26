@@ -107,7 +107,22 @@ function checkHtml(file) {
 
 function checkDemoNotice() {
   const file = path.join(target, 'demos', 'demo-notice.js');
-  if (!fs.existsSync(file)) fail('SEO-DEMO-003', 'demos/demo-notice.js missing');
+  if (!fs.existsSync(file)) {
+    fail('SEO-DEMO-003', 'demos/demo-notice.js missing');
+    return;
+  }
+
+  const script = fs.readFileSync(file, 'utf8');
+  const rendersNotice = [
+    /document\.createElement\(\s*['"]div['"]\s*\)/,
+    /className\s*=\s*['"]hache-demo-notice['"]/,
+    /Este sitio es una demostraci(?:ó|o)n\./,
+    /document\.body\.appendChild\(\s*notice\s*\)/,
+  ].every((marker) => marker.test(script));
+
+  if (!rendersNotice) {
+    fail('SEO-DEMO-004', 'demos/demo-notice.js must create and append the conceptual-project notice');
+  }
 }
 
 function checkRobots() {
