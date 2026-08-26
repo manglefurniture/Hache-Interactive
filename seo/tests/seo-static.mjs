@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import vm from 'node:vm';
 
 const target = path.resolve(process.argv[2] || '.');
 const failures = [];
@@ -105,6 +106,52 @@ function checkHtml(file) {
   }
 }
 
+function createDemoNoticeDocument() {
+  const createElement = (tagName) => {
+    const children = [];
+    return {
+      tagName: tagName.toUpperCase(),
+      children,
+      className: '',
+      innerHTML: '',
+      textContent: '',
+      classList: { add() {}, remove() {} },
+      setAttribute() {},
+      appendChild(child) {
+        children.push(child);
+        return child;
+      },
+      querySelector(selector) {
+        return selector === 'button' && this.innerHTML.includes('<button')
+          ? { addEventListener() {} }
+          : null;
+      },
+      remove() {},
+    };
+  };
+
+  return { head: createElement('head'), body: createElement('body'), createElement };
+}
+
+function rendersDemoNotice(script) {
+  const document = createDemoNoticeDocument();
+  try {
+    vm.runInNewContext(script, {
+      document,
+      requestAnimationFrame(callback) { callback(); },
+      setTimeout() { return 0; },
+    }, { filename: 'demos/demo-notice.js', timeout: 1000 });
+  } catch {
+    return false;
+  }
+
+  return document.body.children.some((element) => (
+    element.tagName === 'DIV'
+    && element.className === 'hache-demo-notice'
+    && element.innerHTML.includes('Este sitio es una demostración.')
+  ));
+}
+
 function checkDemoNotice() {
   const file = path.join(target, 'demos', 'demo-notice.js');
   if (!fs.existsSync(file)) {
@@ -113,15 +160,14 @@ function checkDemoNotice() {
   }
 
   const script = fs.readFileSync(file, 'utf8');
-  const rendersNotice = [
-    /document\.createElement\(\s*['"]div['"]\s*\)/,
-    /className\s*=\s*['"]hache-demo-notice['"]/,
-    /Este sitio es una demostraci(?:ó|o)n\./,
-    /document\.body\.appendChild\(\s*notice\s*\)/,
-  ].every((marker) => marker.test(script));
-
-  if (!rendersNotice) {
+  if (!rendersDemoNotice(script)) {
     fail('SEO-DEMO-004', 'demos/demo-notice.js must create and append the conceptual-project notice');
+  }
+
+  // Impide que una implementación completa dentro de un comentario pase la prueba.
+  const commentedOutScript = `/*\n${script.replaceAll('*/', '* /')}\n*/`;
+  if (rendersDemoNotice(commentedOutScript)) {
+    fail('SEO-DEMO-005', 'commented-out demo notice implementation must not pass');
   }
 }
 
