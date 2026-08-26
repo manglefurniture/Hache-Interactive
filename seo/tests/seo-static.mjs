@@ -112,12 +112,14 @@ function createDemoNoticeDocument() {
     return {
       tagName: tagName.toUpperCase(),
       children,
+      parentNode: null,
       className: '',
       innerHTML: '',
       textContent: '',
       classList: { add() {}, remove() {} },
       setAttribute() {},
       appendChild(child) {
+        child.parentNode = this;
         children.push(child);
         return child;
       },
@@ -126,7 +128,12 @@ function createDemoNoticeDocument() {
           ? { addEventListener() {} }
           : null;
       },
-      remove() {},
+      remove() {
+        if (!this.parentNode) return;
+        const index = this.parentNode.children.indexOf(this);
+        if (index !== -1) this.parentNode.children.splice(index, 1);
+        this.parentNode = null;
+      },
     };
   };
 
@@ -168,6 +175,11 @@ function checkDemoNotice() {
   const commentedOutScript = `/*\n${script.replaceAll('*/', '* /')}\n*/`;
   if (rendersDemoNotice(commentedOutScript)) {
     fail('SEO-DEMO-005', 'commented-out demo notice implementation must not pass');
+  }
+
+  const removedNoticeScript = "const notice=document.createElement('div');notice.className='hache-demo-notice';notice.innerHTML='Este sitio es una demostración.';document.body.appendChild(notice);notice.remove();";
+  if (rendersDemoNotice(removedNoticeScript)) {
+    fail('SEO-DEMO-006', 'a demo notice removed before render must not pass');
   }
 }
 
