@@ -1,2 +1,0 @@
-Temporary test helper for WhatsApp Embedded Signup coexistence flow.
-Delete this file together with whatsapp-coexistence.html when the test is complete.
