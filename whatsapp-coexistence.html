@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>WhatsApp Coexistence · Hache Interactive</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: #0b1020;
+      color: #eef2ff;
+    }
+    main {
+      width: min(760px, 100%);
+      background: #121a2f;
+      border: 1px solid #26314f;
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    }
+    h1 { margin: 0 0 12px; font-size: clamp(1.6rem, 4vw, 2.3rem); }
+    p { line-height: 1.6; color: #cbd5e1; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      background: #25d366;
+      color: #06230f;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .status {
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      background: #0f172a;
+    }
+    .status strong { display: block; margin-bottom: 8px; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      color: #dbeafe;
+      font-size: .92rem;
+    }
+    .note { font-size: .92rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Prueba de WhatsApp Coexistence</h1>
+    <p>Esta página temporal inicia el flujo oficial de Meta para conectar una cuenta existente de WhatsApp Business con Cloud API manteniendo el uso de la app móvil cuando la cuenta sea elegible para coexistencia.</p>
+
+    <button id="startButton" type="button" disabled>Preparando Meta…</button>
+
+    <div class="status" aria-live="polite">
+      <strong>Estado</strong>
+      <pre id="statusOutput">Cargando SDK de Meta…</pre>
+    </div>
+
+    <p class="note">No se muestran ni almacenan tokens de acceso en esta página. El código temporal de autorización solo se muestra para validar el flujo y debe intercambiarse del lado del servidor si se decide completar la integración.</p>
+  </main>
+
+  <script>
+    const META_APP_ID = '2349082375628501';
+    const META_CONFIG_ID = '2592569187880923';
+    const META_GRAPH_VERSION = 'v23.0';
+
+    const startButton = document.getElementById('startButton');
+    const statusOutput = document.getElementById('statusOutput');
+
+    function showStatus(label, data) {
+      const safeData = data && typeof data === 'object' ? data : { detail: data ?? '' };
+      statusOutput.textContent = label + '\n\n' + JSON.stringify(safeData, null, 2);
+    }
+
+    window.fbAsyncInit = function () {
+      FB.init({
+        appId: META_APP_ID,
+        cookie: true,
+        xfbml: false,
+        version: META_GRAPH_VERSION
+      });
+
+      startButton.disabled = false;
+      startButton.textContent = 'Iniciar conexión con WhatsApp';
+      showStatus('SDK de Meta listo', {
+        app_id: META_APP_ID,
+        config_id: META_CONFIG_ID,
+        feature_type: 'whatsapp_business_app_onboarding'
+      });
+    };
+
+    function launchWhatsAppSignup() {
+      startButton.disabled = true;
+      startButton.textContent = 'Abriendo Meta…';
+
+      FB.login(function (response) {
+        startButton.disabled = false;
+        startButton.textContent = 'Iniciar conexión con WhatsApp';
+
+        if (response && response.authResponse && response.authResponse.code) {
+          showStatus('Meta devolvió un código temporal de autorización', {
+            event: 'AUTH_CODE_RECEIVED',
+            code: response.authResponse.code
+          });
+          return;
+        }
+
+        showStatus('El inicio de sesión no se completó', {
+          event: 'LOGIN_NOT_COMPLETED',
+          status: response ? response.status : 'unknown'
+        });
+      }, {
+        config_id: META_CONFIG_ID,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: {
+          setup: {},
+          featureType: 'whatsapp_business_app_onboarding',
+          sessionInfoVersion: '3'
+        }
+      });
+    }
+
+    startButton.addEventListener('click', launchWhatsAppSignup);
+
+    window.addEventListener('message', function (event) {
+      if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') {
+        return;
+      }
+
+      let payload = event.data;
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload);
+        } catch (_) {
+          return;
+        }
+      }
+
+      if (!payload || payload.type !== 'WA_EMBEDDED_SIGNUP') {
+        return;
+      }
+
+      if (payload.event === 'FINISH') {
+        showStatus('Embedded Signup finalizado', {
+          event: payload.event,
+          waba_id: payload.data && payload.data.waba_id ? payload.data.waba_id : null,
+          phone_number_id: payload.data && payload.data.phone_number_id ? payload.data.phone_number_id : null,
+          business_id: payload.data && payload.data.business_id ? payload.data.business_id : null
+        });
+        return;
+      }
+
+      if (payload.event === 'CANCEL') {
+        showStatus('Embedded Signup cancelado', {
+          event: payload.event,
+          current_step: payload.data && payload.data.current_step ? payload.data.current_step : null
+        });
+        return;
+      }
+
+      if (payload.event === 'ERROR') {
+        showStatus('Meta reportó un error en Embedded Signup', {
+          event: payload.event,
+          error_message: payload.data && payload.data.error_message ? payload.data.error_message : 'Sin detalle'
+        });
+        return;
+      }
+
+      showStatus('Evento recibido desde Embedded Signup', payload);
+    });
+  </script>
+
+  <script async defer crossorigin="anonymous" src="https://connect.facebook.net/es_LA/sdk.js"></script>
+</body>
+</html>
